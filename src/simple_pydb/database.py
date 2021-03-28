@@ -127,7 +127,7 @@ class Database:
 
             current_row += 1
 
-        current_row = 0
+        current_row = None
 
         for item in items:
             for x in items[item]:
