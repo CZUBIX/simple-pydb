@@ -1,4 +1,5 @@
 from .parser import Parser
+import copy
 
 class Object:
     def __init__(self, json):
@@ -162,6 +163,11 @@ class Database:
 
             columns[column].append(list(item.values())[0])
 
+        if not items[self.items["database"]][self.items["table"]]:
+            for item in json:
+                if not item in columns:
+                    columns[item] = []
+
         if not len(columns) == len(json):
             return False
 
@@ -171,10 +177,9 @@ class Database:
         for item in columns:
             for x in columns[item]:
                 data.append({item: x})
-    
+
         items[self.items["database"]][self.items["table"]] = data   
 
-        print(items[self.items["database"]][self.items["table"]])
         self.parser.content = self.parser.parse_from_dict(items)
         open(self.database, "w").write(self.parser.content)
 
@@ -201,15 +206,47 @@ class Database:
 
         return True
 
-    def delete(self, column, value):
+    def delete(self, value):
         self.parser.generate_items()
 
-        data = []
         items = self.parser.parse_items()
+        data = {}
+        new_data = []
+        current_row = 0
 
         for item in items[self.items["database"]][self.items["table"]]:
-            if list(item.keys())[0] == column and list(item.values())[0] == value:
-                item[list(item.keys())[0]] = None
+            column = list(item.keys())[0]
+
+            if not column in data:
+                data[column] = []
+                current_row = 0
+
+            data[column].append([list(item.values())[0], current_row])
+
+            current_row += 1
+
+        current_row = None
+
+        for item in data:
+            for x in data[item]:
+                if x[0] == value:
+                    current_row = x[1]
+                    break
+
+        copied_data = copy.deepcopy(data)
+
+        for item in data:
+            for x in data[item]:
+                if x[1] == current_row:
+                    copied_data[item].remove(x)
+                else:
+                    copied_data[item][copied_data[item].index(x)] = x[0]
+                    
+        for item in copied_data:
+            for x in copied_data[item]:
+                new_data.append({item: x})
+        
+        items[self.items["database"]][self.items["table"]] = new_data   
 
         self.parser.content = self.parser.parse_from_dict(items)
         open(self.database, "w").write(self.parser.content)
