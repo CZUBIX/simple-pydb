@@ -50,7 +50,7 @@ Pushing items
 Updating item
 `<db>.db(database_name).table(table_name).update(column_name, value, new_value)`
 
-Deleting item
+Deleting row
 `<db>.db(database_name).table(table_name).delete(column_name, value)`
 
 Deleting column
