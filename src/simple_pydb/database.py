@@ -5,10 +5,18 @@ from typing import List, Dict, Any
 class Db:
     def __init__(self, **kwargs):
         self.__dict__ = kwargs
+    def __repr__(self):
+        return "Db"
+    def __str__(self):
+        return "Db"
 
 class Table:
     def __init__(self, **kwargs):
         self.__dict__ = kwargs
+    def __repr__(self):
+        return "Table"
+    def __str__(self):
+        return "Table"
 
 class Database:
     def __init__(self, database):
