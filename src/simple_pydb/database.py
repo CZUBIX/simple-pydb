@@ -1,14 +1,19 @@
 from .parser import Parser
-import copy
+from .types import Empty
+from typing import List, Dict, Any
 
-class Object:
-    def __init__(self, json):
-        self.__dict__ = json
+class Db:
+    def __init__(self, **kwargs):
+        self.__dict__ = kwargs
+
+class Table:
+    def __init__(self, **kwargs):
+        self.__dict__ = kwargs
 
 class Database:
     def __init__(self, database):
         self.database = database
-        self.content = open(database, "r").read()
+        self.content = open(self.database, "r").read()
         self.parser = Parser(self.content)
 
         self.items = {
@@ -16,254 +21,264 @@ class Database:
             "table": ""
         }
 
-    def get_all(self):
+    def save(self):
+        open(self.database, "w").write(self.parser.content)
+
+    def get_all(self) -> Dict[Any, Dict[Any, list]]:
         self.parser.generate_items()
 
         return self.parser.parse_items()
 
-    def db(self, db):
-        self.items["database"] = db
+    def db(self, name) -> Db:
+        self.items["database"] = name
+
+        return Db(
+            table = self.table,
+            create_table = self.create_table,
+            delete_table = self.delete_table
+        )
+
+    def create_db(self, name):
+        self.parser.generate_items()
+
+        items = self.parser.parse_items()
+
+        if name in items:
+            return False
+
+        items[name] = {}
+        self.parser.content = self.parser.parse_from_dict(items)
+        self.save()
+
+        return True
+
+    def delete_db(self, name):
+        self.parser.generate_items()
+
+        items = self.parser.parse_items()
+
+        if not name in items:
+            return False
+
+        del items[name]
+        self.parser.content = self.parser.parse_from_dict(items)
+        self.save()
+
+        return True
+
+    def table(self, name) -> Table:
+        self.items["table"] = name
+
+        return Table(
+            create_column = self.create_column,
+            get_items_from_column = self.get_items_from_column,
+            get = self.get,
+            get_items = self.get_items,
+            push = self.push,
+            update = self.update,
+            delete = self.delete,
+            delete_row = self.delete_row,
+            delete_column = self.delete_column
+        )
+
+    def create_table(self, name):
+        self.parser.generate_items()
+
+        items = self.parser.parse_items()
+
+        if name in items[self.items["database"]]:
+            return False
+
+        items[self.items["database"]][name] = {}
+        self.parser.content = self.parser.parse_from_dict(items)
+        self.save()
         
-        return Object({
-            "table": self.table,
-            "create_table": self.create_table,
-            "delete_table": self.delete_table
-        })
+        return True
 
-    def create_db(self, db):
+    def delete_table(self, name):
         self.parser.generate_items()
 
         items = self.parser.parse_items()
 
-        if db in items:
+        if not name in items[self.items["database"]]:
             return False
 
-        items[db] = {}
-
+        del items[self.items["database"]][name]
         self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
-
+        self.save()
+        
         return True
 
-    def delete_db(self, db):
+    def create_column(self, name):
         self.parser.generate_items()
 
+        values = []
         items = self.parser.parse_items()
 
-        if db in items:
-            del items[db]
-
-        self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
-
-        return True
-
-    def table(self, table):
-        self.items["table"] = table
-
-        return Object({
-            "get_items_from_column": self.get_items_from_column,
-            "get_row_by_value": self.get_row_by_value,
-            "get_items": self.get_items,
-            "push": self.push,
-            "update": self.update,
-            "delete": self.delete,
-            "delete_column": self.delete_column
-        })
-
-    def create_table(self, table):
-        self.parser.generate_items()
-
-        items = self.parser.parse_items()
-
-        if table in items:
+        if name in items[self.items["database"]][self.items["table"]]:
             return False
 
-        items[self.items["database"]][table] = []
-
+        if items[self.items["database"]][self.items["table"]]:
+            for _ in list(items[self.items["database"]][self.items["table"]].values())[0]:
+                values.append(Empty())
+            
+        items[self.items["database"]][self.items["table"]][name] = values
         self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
+        self.save()
 
         return True
 
-    def delete_table(self, table):
+    def get_items_from_column(self, name) -> list:
         self.parser.generate_items()
 
-        items = self.parser.parse_items()
+        items = self.parser.parse_items()[self.items["database"]][self.items["table"]]
 
-        if table in items[self.items["database"]]:
-            del items[self.items["database"]][table]
+        if not name in items:
+            return False
 
-        self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
+        return items[name]
 
-        return True
-
-    def get_items_from_column(self, column):
+    def get(self, column, value) -> List[dict]:
         self.parser.generate_items()
 
         data = []
+        index = None
+        items = self.parser.parse_items()[self.items["database"]][self.items["table"]]
 
-        for item in self.parser.parse_items()[self.items["database"]][self.items["table"]]:
-            if list(item.keys())[0] == column:
-                data.append(item)
+        if not column in items:
+            return False
 
-        return data
+        for _column in items:
+            if _column == column:
+                for _value in items[column]:
+                    if _value == value:
+                        index = items[column].index(value)
+                        break
+                break
 
-    def get_row_by_value(self, value):
-        self.parser.generate_items()
+        if index == None:
+            return False
 
-        items = {}
-        current_row = 0
-        data = {}
-
-        for item in self.parser.parse_items()[self.items["database"]][self.items["table"]]:
-            column = list(item.keys())[0]
-
-            if not column in items:
-                items[column] = []
-                current_row = 0
-
-            items[column].append([list(item.values())[0], current_row])
-
-            current_row += 1
-
-        current_row = None
-
-        for item in items:
-            for x in items[item]:
-                if x[0] == value:
-                    current_row = x[1]
-                    break
-
-        for item in items:
-            for x in items[item]:
-                if x[1] == current_row:
-                    data[item] = x[0]
+        for _column in items:
+            data.append({_column: items[_column][index]})
 
         return data
 
-    def get_items(self):
+    def get_items(self) -> Dict[Any, list]:
         self.parser.generate_items()
 
         return self.parser.parse_items()[self.items["database"]][self.items["table"]]
 
-    def push(self, json):
+    def push(self, values: dict):
         self.parser.generate_items()
 
         items = self.parser.parse_items()
-        columns = {}
-        data = []
 
-        for item in items[self.items["database"]][self.items["table"]]:
-            column = list(item.keys())[0]
+        for item in items[self.items["database"]][self.items["table"]].keys():
+            if not item in values:
+                values[item] = Empty()
 
-            if not column in columns:
-                columns[column] = []
+        for column, value in values.items():
+            if not column in items[self.items["database"]][self.items["table"]]:
+                return False
 
-            columns[column].append(list(item.values())[0])
+            items[self.items["database"]][self.items["table"]][column].append(value)
 
-        if not items[self.items["database"]][self.items["table"]]:
-            for item in json:
-                if not item in columns:
-                    columns[item] = []
+        self.parser.content = self.parser.parse_from_dict(items)
+        self.save()
 
-        if not len(columns) == len(json):
+        return True
+
+    def update(self, column, value, in_column, new_value):
+        self.parser.generate_items()
+
+        index = None
+        items = self.parser.parse_items()
+
+        if not (column in items[self.items["database"]][self.items["table"]] or in_column in items[self.items["database"]][self.items["table"]]):
             return False
 
-        for item in json:
-            columns[item].append(json[item])
+        for _column in items[self.items["database"]][self.items["table"]]:
+            if _column == column:
+                for _value in items[self.items["database"]][self.items["table"]][column]:
+                    if _value == value:
+                        index = items[self.items["database"]][self.items["table"]][column].index(value)
+                        break
+                break
 
-        for item in columns:
-            for x in columns[item]:
-                data.append({item: x})
+        if index == None:
+            return False
 
-        items[self.items["database"]][self.items["table"]] = data   
-
+        items[self.items["database"]][self.items["table"]][in_column][index] = new_value
         self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
+        self.save()
 
         return True
 
-    def update(self, column, value, new_value):
+    def delete(self, column, value, in_column):
         self.parser.generate_items()
- 
-        data = []
+
+        index = None
         items = self.parser.parse_items()
 
-        for item in items[self.items["database"]][self.items["table"]]:
-            current_column = list(item.keys())[0]
+        if not (column in items[self.items["database"]][self.items["table"]] or in_column in items[self.items["database"]][self.items["table"]]):
+            return False
 
-            if current_column == column and item[current_column] == value:
-                item[current_column] = new_value
+        for _column in items[self.items["database"]][self.items["table"]]:
+            if _column == column:
+                for _value in items[self.items["database"]][self.items["table"]][column]:
+                    if _value == value:
+                        index = items[self.items["database"]][self.items["table"]][column].index(value)
+                        break
+                break
 
-            data.append(item)
+        if index == None:
+            return False
 
-        items[self.items["database"]][self.items["table"]] = data
-
+        items[self.items["database"]][self.items["table"]][in_column][index] = Empty()
         self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
+        self.save()
 
         return True
 
-    def delete(self, value):
+    def delete_row(self, column, value):
         self.parser.generate_items()
 
+        index = None
         items = self.parser.parse_items()
-        data = {}
-        new_data = []
-        current_row = 0
 
-        for item in items[self.items["database"]][self.items["table"]]:
-            column = list(item.keys())[0]
+        if not column in items[self.items["database"]][self.items["table"]]:
+            return False
 
-            if not column in data:
-                data[column] = []
-                current_row = 0
+        for _column in items[self.items["database"]][self.items["table"]]:
+            if _column == column:
+                for _value in items[self.items["database"]][self.items["table"]][column]:
+                    if _value == value:
+                        index = items[self.items["database"]][self.items["table"]][column].index(value)
+                        break
+                break
 
-            data[column].append([list(item.values())[0], current_row])
+        if index == None:
+            return False
 
-            current_row += 1
-
-        current_row = None
-
-        for item in data:
-            for x in data[item]:
-                if x[0] == value:
-                    current_row = x[1]
-                    break
-
-        copied_data = copy.deepcopy(data)
-
-        for item in data:
-            for x in data[item]:
-                if x[1] == current_row:
-                    copied_data[item].remove(x)
-                else:
-                    copied_data[item][copied_data[item].index(x)] = x[0]
-                    
-        for item in copied_data:
-            for x in copied_data[item]:
-                new_data.append({item: x})
-        
-        items[self.items["database"]][self.items["table"]] = new_data   
+        for _column in items[self.items["database"]][self.items["table"]]:
+            del items[self.items["database"]][self.items["table"]][_column][index]
 
         self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
+        self.save()
 
         return True
 
-    def delete_column(self, column):
+    def delete_column(self, name):
         self.parser.generate_items()
 
-        data = []
         items = self.parser.parse_items()
 
-        for item in items[self.items["database"]][self.items["table"]]:
-            if list(item.keys())[0] == column:
-                items[self.items["database"]][self.items["table"]].remove(item)
+        if not name in items[self.items["database"]][self.items["table"]]:
+            return False
 
+        del items[self.items["database"]][self.items["table"]][name]
         self.parser.content = self.parser.parse_from_dict(items)
-        open(self.database, "w").write(self.parser.content)
+        self.save()
 
         return True

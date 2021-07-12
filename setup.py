@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name = "simple-pydb",
-    version = "1.1.1",
+    version = "1.2.1",
     author = "czubix",
     description = "Simple python database",
     long_description = long_description,

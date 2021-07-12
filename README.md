@@ -1,11 +1,9 @@
 # Documentation
 
-Creating a class
-
 ```py
-import simple_pydb
+from simple_pydb import Database
 
-db = simple_pydb.Database("database.pydb")
+db = Database("database.pydb")
 ```
 
 Getting all items
@@ -35,11 +33,14 @@ Deleting a table
 
 # Columns and values
 
+Creating a column
+`<db>.db(database_name).table(table_name).create_column(column_name)`
+
 Getting all items from column
 `<db>.db(database_name).table(table_name).get_items_from_column(column_name)`
 
-Getting row by value
-`<db>.db(database_name).table(table_name).get_row_by_value(value)`
+Getting row
+`<db>.db(database_name).table(table_name).get(column, value)`
 
 Getting items
 `<db>.db(database_name).table(table_name).get_items()`
@@ -48,10 +49,13 @@ Pushing items
 `<db>.db(database_name).table(table_name).push({column_name: value})`
 
 Updating item
-`<db>.db(database_name).table(table_name).update(column_name, value, new_value)`
+`<db>.db(database_name).table(table_name).update(column_name, value, in_column, new_value)`
+
+Deleting item
+`<db>.db(database_name).table(table_name).delete(column_name, value)`
 
 Deleting row
-`<db>.db(database_name).table(table_name).delete(column_name, value)`
+`<db>.db(database_name).table(table_name).delete_row(column_name, value)`
 
 Deleting column
 `<db>.db(database_name).table(table_name).delete_column(column_name)`
